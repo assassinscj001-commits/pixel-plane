@@ -1,3 +1,229 @@
+// 音效管理器
+class SoundManager {
+    constructor() {
+        this.audioContext = null;
+        this.sounds = {};
+        this.musicGain = null;
+        this.sfxGain = null;
+        this.masterVolume = 0.3;
+        this.musicVolume = 0.2;
+        this.sfxVolume = 0.4;
+        this.init();
+    }
+
+    async init() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 创建音量控制节点
+            this.masterGain = this.audioContext.createGain();
+            this.musicGain = this.audioContext.createGain();
+            this.sfxGain = this.audioContext.createGain();
+            
+            // 连接音频节点
+            this.musicGain.connect(this.masterGain);
+            this.sfxGain.connect(this.masterGain);
+            this.masterGain.connect(this.audioContext.destination);
+            
+            // 设置音量
+            this.masterGain.gain.value = this.masterVolume;
+            this.musicGain.gain.value = this.musicVolume;
+            this.sfxGain.gain.value = this.sfxVolume;
+            
+        } catch (error) {
+            console.warn('音频上下文初始化失败:', error);
+        }
+    }
+
+    // 恢复音频上下文（用户交互后）
+    async resumeContext() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+    }
+
+    // 创建射击音效
+    playShoot(type = 'player') {
+        if (!this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.sfxGain);
+        
+        if (type === 'player') {
+            oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.1);
+        } else {
+            oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(150, this.audioContext.currentTime + 0.15);
+        }
+        
+        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+        
+        oscillator.type = 'square';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.1);
+    }
+
+    // 创建爆炸音效
+    playExplosion(size = 'small') {
+        if (!this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        oscillator.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.sfxGain);
+        
+        const duration = size === 'big' ? 0.5 : 0.3;
+        const startFreq = size === 'big' ? 200 : 150;
+        
+        oscillator.frequency.setValueAtTime(startFreq, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + duration);
+        
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2000, this.audioContext.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + duration);
+        
+        gainNode.gain.setValueAtTime(0.5, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + duration);
+    }
+
+    // 创建道具收集音效
+    playPowerUp() {
+        if (!this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.sfxGain);
+        
+        oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(800, this.audioContext.currentTime + 0.1);
+        oscillator.frequency.linearRampToValueAtTime(1200, this.audioContext.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.1, this.audioContext.currentTime + 0.1);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+        
+        oscillator.type = 'sine';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.3);
+    }
+
+    // 创建受伤音效
+    playHit() {
+        if (!this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.sfxGain);
+        
+        oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.2);
+    }
+
+    // 创建关卡完成音效
+    playLevelComplete() {
+        if (!this.audioContext) return;
+        
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        
+        notes.forEach((freq, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.sfxGain);
+            
+            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime + index * 0.2);
+            gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime + index * 0.2);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + index * 0.2 + 0.3);
+            
+            oscillator.type = 'sine';
+            oscillator.start(this.audioContext.currentTime + index * 0.2);
+            oscillator.stop(this.audioContext.currentTime + index * 0.2 + 0.3);
+        });
+    }
+
+    // 创建游戏结束音效
+    playGameOver() {
+        if (!this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.sfxGain);
+        
+        oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 1.0);
+        
+        gainNode.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.0);
+        
+        oscillator.type = 'triangle';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 1.0);
+    }
+
+    // 播放背景音乐（简单的循环音调）
+    playBackgroundMusic() {
+        if (!this.audioContext || this.backgroundMusic) return;
+        
+        this.backgroundMusic = true;
+        this.playMusicLoop();
+    }
+
+    playMusicLoop() {
+        if (!this.audioContext || !this.backgroundMusic) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.musicGain);
+        
+        // 简单的音乐循环
+        const notes = [220, 246.94, 261.63, 293.66]; // A3, B3, C4, D4
+        const noteIndex = Math.floor(Math.random() * notes.length);
+        
+        oscillator.frequency.setValueAtTime(notes[noteIndex], this.audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 2.0);
+        
+        oscillator.type = 'sine';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 2.0);
+        
+        // 继续循环
+        setTimeout(() => this.playMusicLoop(), 1500);
+    }
+
+    stopBackgroundMusic() {
+        this.backgroundMusic = false;
+    }
+}
+
 // 像素飞机游戏主逻辑
 class PixelAircraft {
     constructor() {
@@ -35,6 +261,9 @@ class PixelAircraft {
         
         // 暂停状态
         this.isPaused = false;
+        
+        // 音效管理器
+        this.soundManager = new SoundManager();
         
         this.init();
     }
@@ -111,7 +340,7 @@ class PixelAircraft {
         this.particles = [];
         
         // 创建玩家
-        this.player = new Player(this.canvas.width / 2, this.canvas.height - 80);
+        this.player = new Player(this.canvas.width / 2, this.canvas.height - 80, this.soundManager);
         
         // 隐藏菜单
         const menuElement = document.getElementById('menu');
@@ -137,6 +366,16 @@ class PixelAircraft {
         if (pauseBtn) {
             pauseBtn.classList.remove('hidden');
         }
+        
+        // 显示UI元素
+        const uiDiv = document.getElementById('ui');
+        if (uiDiv) {
+            uiDiv.classList.remove('hidden');
+        }
+        
+        // 启动音效系统
+        this.soundManager.resumeContext();
+        this.soundManager.playBackgroundMusic();
         
         this.updateUI();
         console.log('startGame completed');
@@ -306,6 +545,9 @@ class PixelAircraft {
                     this.bullets.splice(bulletIndex, 1);
                     
                     if (enemy.health <= 0) {
+                        // 播放爆炸音效
+                        this.soundManager.playExplosion('small');
+                        
                         this.score += enemy.score;
                         
                         // 掉落道具
@@ -348,6 +590,9 @@ class PixelAircraft {
         // 玩家 vs 道具
         this.powerUps.forEach((powerUp, index) => {
             if (this.isColliding(powerUp, this.player)) {
+                // 播放道具收集音效
+                this.soundManager.playPowerUp();
+                
                 this.applyPowerUp(powerUp.type);
                 this.powerUps.splice(index, 1);
                 this.createExplosion(powerUp.x, powerUp.y, '#00ff00');
@@ -404,6 +649,9 @@ class PixelAircraft {
     }
     
     levelComplete() {
+        // 播放关卡完成音效
+        this.soundManager.playLevelComplete();
+        
         if (this.currentLevel === 1) {
             this.level1Completed = true;
             localStorage.setItem('level1Completed', 'true');
@@ -415,6 +663,14 @@ class PixelAircraft {
     
     gameOver(victory) {
         this.gameState = 'gameOver';
+        
+        // 停止背景音乐
+        this.soundManager.stopBackgroundMusic();
+        
+        // 播放游戏结束音效（仅在失败时）
+        if (!victory) {
+            this.soundManager.playGameOver();
+        }
         
         // 隐藏暂停按钮
         const pauseBtn = document.getElementById('pauseBtn');
@@ -532,7 +788,7 @@ class PixelAircraft {
 
 // 玩家类
 class Player {
-    constructor(x, y) {
+    constructor(x, y, soundManager = null) {
         this.x = x;
         this.y = y;
         this.width = 24;
@@ -544,6 +800,7 @@ class Player {
         this.weaponType = 'single';
         this.shootCooldown = 0;
         this.shootDelay = 150;
+        this.soundManager = soundManager;
     }
     
     update() {
@@ -562,6 +819,11 @@ class Player {
     
     shoot(bullets) {
         this.shootCooldown = this.shootDelay;
+        
+        // 播放射击音效
+        if (this.soundManager) {
+            this.soundManager.playShoot('player');
+        }
         
         switch (this.weaponType) {
             case 'single':
@@ -583,6 +845,11 @@ class Player {
     }
     
     takeDamage(damage) {
+        // 播放受伤音效
+        if (this.soundManager) {
+            this.soundManager.playHit();
+        }
+        
         if (this.shield > 0) {
             this.shield -= damage;
             if (this.shield < 0) {
@@ -994,6 +1261,12 @@ class BomberEnemy extends BasicEnemy {
     
     explode() {
         this.exploded = true;
+        
+        // 播放大爆炸音效
+        if (game.soundManager) {
+            game.soundManager.playExplosion('large');
+        }
+        
         // 创建爆炸伤害区域
         // 这里可以添加范围伤害逻辑
     }
@@ -1096,6 +1369,11 @@ class Boss1 extends BasicEnemy {
     }
     
     shoot() {
+        // 播放敌人射击音效
+        if (game.soundManager) {
+            game.soundManager.playShoot('enemy');
+        }
+        
         // 简单的射击模式
         game.enemyBullets.push(new Bullet(this.x, this.y + 20, 0, 4, 15, '#ff0000'));
         game.enemyBullets.push(new Bullet(this.x - 20, this.y + 20, -1, 4, 15, '#ff0000'));
@@ -1194,6 +1472,11 @@ class Boss2 extends Boss1 {
     }
     
     shoot() {
+        // 播放敌人射击音效
+        if (game.soundManager) {
+            game.soundManager.playShoot('enemy');
+        }
+        
         if (this.phase === 1) {
             // 第一阶段：扇形射击
             for (let i = -2; i <= 2; i++) {
@@ -1460,6 +1743,12 @@ function showInstructions() {
         menuDiv.classList.add('hidden');
     }
     
+    // 隐藏UI元素
+    const uiDiv = document.getElementById('ui');
+    if (uiDiv) {
+        uiDiv.classList.add('hidden');
+    }
+    
     // 显示游戏说明页面
     const instructionsDiv = document.getElementById('instructions');
     if (instructionsDiv) {
@@ -1499,6 +1788,12 @@ function backToMenu() {
             // 移除任何内联样式，让CSS控制布局
             menuDiv.style.display = '';
             console.log('Menu shown and display reset');
+        }
+        
+        // 显示UI元素（在主菜单时应该隐藏，但在游戏中需要显示）
+        const uiDiv = document.getElementById('ui');
+        if (uiDiv) {
+            uiDiv.classList.add('hidden'); // 在主菜单时隐藏UI
         }
         
         // 重置按钮显示状态
