@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>像素飞机 - Pixel Aircraft</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            touch-action: none;
+            position: relative;
+        }
+        
+        /* 添加动态背景效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            z-index: -1;
+            animation: backgroundPulse 4s ease-in-out infinite alternate;
+        }
+        
+        @keyframes backgroundPulse {
+            0% { opacity: 0.5; }
+            100% { opacity: 0.8; }
+        }
+        
+        #gameContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #00ffff;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.5),
+                0 0 40px rgba(0, 255, 255, 0.3),
+                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            background: linear-gradient(135deg, #000814, #001d3d, #003566);
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            border-radius: 8px;
+            animation: canvasGlow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes canvasGlow {
+            0% { 
+                box-shadow: 
+                    0 0 20px rgba(0, 255, 255, 0.5),
+                    0 0 40px rgba(0, 255, 255, 0.3),
+                    inset 0 0 20px rgba(0, 255, 255, 0.1);
+            }
+            100% { 
+                box-shadow: 
+                    0 0 30px rgba(0, 255, 255, 0.7),
+                    0 0 60px rgba(0, 255, 255, 0.4),
+                    inset 0 0 30px rgba(0, 255, 255, 0.2);
+            }
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffff;
+            font-size: 16px;
+            z-index: 10;
+            text-shadow: 
+                0 0 10px rgba(0, 255, 255, 0.8),
+                0 0 20px rgba(0, 255, 255, 0.5),
+                2px 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 20, 40, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            animation: uiGlow 2s ease-in-out infinite alternate;
+        }
+        
+        #ui div {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        #ui span {
+            color: #ff00ff;
+            text-shadow: 
+                0 0 10px rgba(255, 0, 255, 0.8),
+                0 0 20px rgba(255, 0, 255, 0.5);
+        }
+        
+        @keyframes uiGlow {
+            0% { 
+                border-color: rgba(0, 255, 255, 0.3);
+                box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            }
+            100% { 
+                border-color: rgba(0, 255, 255, 0.6);
+                box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            }
+        }
+        
+        #menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at center, rgba(0, 20, 40, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%),
+                linear-gradient(45deg, rgba(0, 255, 255, 0.05) 0%, rgba(255, 0, 255, 0.05) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: #fff;
+            text-align: center;
+            gap: 25px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .menu-title {
+            font-size: 48px;
+            margin: 0;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.8),
+                0 0 40px rgba(255, 0, 255, 0.6),
+                0 0 60px rgba(255, 255, 0, 0.4);
+            animation: titleGlow 3s ease-in-out infinite, titleShift 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.5));
+        }
+        
+        @keyframes titleGlow {
+            0%, 100% { 
+                filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.5));
+            }
+            50% { 
+                filter: drop-shadow(0 0 20px rgba(255, 0, 255, 0.8));
+            }
+        }
+        
+        @keyframes titleShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .menu-button {
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2));
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            padding: 15px 30px;
+            margin: 0;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.3),
+                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            min-width: 200px;
+            display: block;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .menu-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .menu-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.5),
+                0 6px 12px rgba(0, 0, 0, 0.4),
+                inset 0 0 30px rgba(0, 255, 255, 0.2);
+            border-color: #ff00ff;
+            color: #ff00ff;
+            text-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+        }
+        
+        .menu-button:hover::before {
+            left: 100%;
+        }
+        
+        .menu-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: 
+                radial-gradient(circle at center, rgba(40, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%),
+                linear-gradient(45deg, rgba(255, 0, 0, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%);
+            color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 200;
+            border: 2px solid #ff6b6b;
+            backdrop-filter: blur(10px);
+            box-shadow: 
+                0 0 40px rgba(255, 107, 107, 0.5),
+                0 0 80px rgba(255, 0, 255, 0.3),
+                inset 0 0 30px rgba(255, 107, 107, 0.1);
+            animation: gameOverGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes gameOverGlow {
+            0% { 
+                border-color: #ff6b6b;
+                box-shadow: 
+                    0 0 40px rgba(255, 107, 107, 0.5),
+                    0 0 80px rgba(255, 0, 255, 0.3),
+                    inset 0 0 30px rgba(255, 107, 107, 0.1);
+            }
+            100% { 
+                border-color: #ff00ff;
+                box-shadow: 
+                    0 0 50px rgba(255, 0, 255, 0.6),
+                    0 0 100px rgba(255, 107, 107, 0.4),
+                    inset 0 0 40px rgba(255, 0, 255, 0.2);
+            }
+        }
+        
+        #gameOverButtons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        #gameOverButtons button {
+            width: 200px;
+            margin: 0;
+        }
+        
+        .instructions-page {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: 
+                radial-gradient(circle at center, rgba(0, 40, 20, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%),
+                linear-gradient(45deg, rgba(0, 255, 0, 0.05) 0%, rgba(0, 255, 255, 0.05) 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: left;
+            z-index: 200;
+            border: 2px solid #00ffff;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 
+                0 0 40px rgba(0, 255, 255, 0.5),
+                0 0 80px rgba(0, 255, 0, 0.3),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+            animation: instructionsGlow 2s ease-in-out infinite alternate;
+        }
+        
+        .instructions-title {
+            color: #00ffff;
+            font-size: 28px;
+            margin: 0 0 25px 0;
+            text-align: center;
+            text-shadow: 
+                0 0 15px rgba(0, 255, 255, 0.8),
+                0 0 30px rgba(0, 255, 255, 0.6),
+                2px 2px 4px rgba(0,0,0,0.8);
+            background: linear-gradient(45deg, #00ffff, #00ff00, #00ffff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleShift 3s ease-in-out infinite;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .instructions-content {
+            margin-bottom: 25px;
+        }
+        
+        .instruction-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #00ffff;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 
+                0 0 15px rgba(0, 255, 255, 0.2),
+                inset 0 0 15px rgba(0, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+        
+        .instruction-item h3 {
+            color: #00ff00;
+            font-size: 18px;
+            margin: 0 0 10px 0;
+            text-shadow: 
+                0 0 10px rgba(0, 255, 0, 0.8),
+                0 0 20px rgba(0, 255, 0, 0.5),
+                1px 1px 2px rgba(0,0,0,0.8);
+            font-weight: bold;
+        }
+        
+        .instruction-item p {
+            color: #ffffff;
+            font-size: 14px;
+            margin: 5px 0;
+            line-height: 1.4;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-hidden {
+            display: none !important;
+        }
+        
+        .hidden {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            z-index: -1 !important;
+        }
+        
+        /* 暂停按钮样式 */
+        .pause-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            font-size: 16px;
+            background: linear-gradient(45deg, rgba(255, 0, 255, 0.2), rgba(255, 255, 0, 0.2));
+            color: #ff00ff;
+            border: 2px solid #ff00ff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 0 15px rgba(255, 0, 255, 0.4),
+                inset 0 0 15px rgba(255, 0, 255, 0.1);
+            font-weight: bold;
+            z-index: 50;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+            backdrop-filter: blur(5px);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .pause-button:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 25px rgba(255, 0, 255, 0.6),
+                inset 0 0 25px rgba(255, 0, 255, 0.2);
+            border-color: #ffff00;
+            color: #ffff00;
+            text-shadow: 0 0 15px rgba(255, 255, 0, 0.8);
+        }
+        
+        /* 暂停菜单样式 */
+        .pause-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: 
+                radial-gradient(circle at center, rgba(0, 20, 40, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%),
+                linear-gradient(45deg, rgba(0, 255, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%);
+            color: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 300;
+            border: 2px solid #00ffff;
+            min-width: 300px;
+            box-shadow: 
+                0 0 40px rgba(0, 255, 255, 0.5),
+                0 0 80px rgba(255, 0, 255, 0.3),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            animation: pauseMenuGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pauseMenuGlow {
+            0% { 
+                border-color: #00ffff;
+                box-shadow: 
+                    0 0 40px rgba(0, 255, 255, 0.5),
+                    0 0 80px rgba(255, 0, 255, 0.3),
+                    inset 0 0 30px rgba(0, 255, 255, 0.1);
+            }
+            100% { 
+                border-color: #ff00ff;
+                box-shadow: 
+                    0 0 50px rgba(255, 0, 255, 0.6),
+                    0 0 100px rgba(0, 255, 255, 0.4),
+                    inset 0 0 40px rgba(255, 0, 255, 0.2);
+            }
+        }
+        
+        .pause-title {
+            font-size: 32px;
+            margin: 0 0 25px 0;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 
+                0 0 15px rgba(0, 255, 255, 0.8),
+                0 0 30px rgba(255, 0, 255, 0.6);
+            animation: titleShift 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.5));
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .pause-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .pause-buttons button {
+            width: 200px;
+            margin: 0;
+        }
+        
+        @keyframes instructionsGlow {
+            0% { 
+                border-color: #00ffff;
+                box-shadow: 
+                    0 0 40px rgba(0, 255, 255, 0.5),
+                    0 0 80px rgba(0, 255, 0, 0.3),
+                    inset 0 0 30px rgba(0, 255, 255, 0.1);
+            }
+            100% { 
+                border-color: #00ff00;
+                box-shadow: 
+                    0 0 50px rgba(0, 255, 0, 0.6),
+                    0 0 100px rgba(0, 255, 255, 0.4),
+                    inset 0 0 40px rgba(0, 255, 0, 0.2);
+            }
+        }
+        
+        .instruction-item:hover {
+            border-color: rgba(0, 255, 0, 0.5);
+            box-shadow: 
+                0 0 25px rgba(0, 255, 0, 0.4),
+                inset 0 0 25px rgba(0, 255, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .menu-title {
+                font-size: 36px;
+            }
+            
+            .menu-button {
+                font-size: 16px;
+                padding: 12px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        
+        <div id="ui">
+            <div>生命值: <span id="health">100</span></div>
+            <div>分数: <span id="score">0</span></div>
+            <div>关卡: <span id="level">1</span></div>
+            <div>武器: <span id="weapon">基础</span></div>
+        </div>
+        
+        <!-- 暂停按钮 -->
+        <button id="pauseBtn" class="pause-button hidden" onclick="pauseGame()">暂停</button>
+        
+        <div id="menu">
+            <h1 class="menu-title">像素飞机</h1>
+            <p style="margin: 0; font-size: 18px;">经典像素风射击游戏</p>
+            <button class="menu-button" onclick="startGame(1)">开始第一关</button>
+            <button class="menu-button" id="level2Btn" onclick="startGame(2)" disabled>挑战第二关</button>
+            <button class="menu-button" onclick="showInstructions()">游戏说明</button>
+        </div>
+        
+        <div id="instructions" class="instructions-page hidden">
+            <h2 class="instructions-title">游戏说明</h2>
+            <div class="instructions-content">
+                <div class="instruction-item">
+                    <h3>🎮 操作方式</h3>
+                    <p>• 使用方向键或WASD移动飞机</p>
+                    <p>• 手机用户可以触摸屏幕控制</p>
+                    <p>• 飞机会自动射击</p>
+                </div>
+                <div class="instruction-item">
+                    <h3>⚡ 道具系统</h3>
+                    <p>• 收集道具提升火力</p>
+                    <p>• 不同道具有不同效果</p>
+                    <p>• 合理利用道具是获胜关键</p>
+                </div>
+                <div class="instruction-item">
+                    <h3>🎯 游戏目标</h3>
+                    <p>• 击败所有敌机和BOSS获胜</p>
+                    <p>• 第一关：轻松愉快的射击体验</p>
+                    <p>• 第二关：极具挑战性的地狱模式</p>
+                </div>
+            </div>
+            <button class="menu-button" onclick="backToMenu()">返回主菜单</button>
+        </div>
+        
+        <!-- 暂停菜单 -->
+        <div id="pauseMenu" class="pause-menu hidden">
+            <h2 class="pause-title">游戏暂停</h2>
+            <div class="pause-buttons">
+                <button class="menu-button" onclick="resumeGame()">继续游戏</button>
+                <button class="menu-button" onclick="restartCurrentLevel()">重新开始</button>
+                <button class="menu-button" onclick="backToMenuFromPause()">返回主菜单</button>
+            </div>
+        </div>
+        
+        <div id="gameOver" class="game-over hidden">
+            <h2 id="gameOverTitle" class="game-over-title">游戏结束</h2>
+            <p id="gameOverText"></p>
+            <p>最终分数: <span id="finalScore">0</span></p>
+            <div id="gameOverButtons">
+                <button class="menu-button" id="backToMenuBtn" onclick="backToMenu()">返回主菜单</button>
+                <button class="menu-button" id="restartBtn" onclick="restartGame()">重新开始</button>
+                <button class="menu-button btn-hidden" id="nextLevelBtn" onclick="startGame(2)">进入第二关</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
