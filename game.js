@@ -508,11 +508,15 @@ class PixelAircraft {
     
     updateUI() {
         if (this.player) {
-            document.getElementById('health').textContent = Math.max(0, this.player.health);
-            document.getElementById('weapon').textContent = this.getWeaponName(this.player.weaponType);
+            const healthElement = document.getElementById('health');
+            const weaponElement = document.getElementById('weapon');
+            if (healthElement) healthElement.textContent = Math.max(0, this.player.health);
+            if (weaponElement) weaponElement.textContent = this.getWeaponName(this.player.weaponType);
         }
-        document.getElementById('score').textContent = this.score;
-        document.getElementById('level').textContent = this.currentLevel;
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        if (scoreElement) scoreElement.textContent = this.score;
+        if (levelElement) levelElement.textContent = this.currentLevel;
     }
     
     getWeaponName(type) {
